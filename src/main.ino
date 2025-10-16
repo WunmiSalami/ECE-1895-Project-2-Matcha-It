@@ -21,7 +21,7 @@
 
   https://docs.arduino.cc/built-in-examples/basics/Blink/
 */
-//Names : Wunmi Salami, Katrina Lopez, Andrew Kim
+//Names : Wunmi Salami, Katrina Lopez, Andrew Kim 
 // the setup function runs once when you press reset or power the board
 void setup()
 {
