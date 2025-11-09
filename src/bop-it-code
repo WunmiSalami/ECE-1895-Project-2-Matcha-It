@@ -1,0 +1,243 @@
+// #include <TM1637Display.h>
+#define CLK 6 // pin #s, not digital pin #
+#define DIO 16
+//TM1637Display display(CLK, DIO);
+uint8_t data[] = {0xff, 0xff, 0xff, 0xff};  // initialize
+
+void game();
+
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(0, INPUT); // start button
+  pinMode(1, INPUT); // toggle switch - "whisk it"
+  pinMode(2, INPUT); // button - "serve it"
+  pinMode(3, INPUT); // button - "pour it"
+  pinMode(5, OUTPUT);  // LED - correct answer
+  pinMode(6, OUTPUT);  // LED - incorrect answer 
+  pinMode(7, OUTPUT);  // plays whisk it command
+  pinMode(8, OUTPUT);  // plays serve it command
+  pinMode(9, OUTPUT);   // plays pour it command
+
+  randomSeed(analogRead(A0)); // help with randomization
+}
+
+
+void loop() {
+
+  // initialize so audio pins
+  digitalWrite(5, LOW);
+  digitalWrite(6, LOW);
+  digitalWrite(7, HIGH);
+  digitalWrite(8, HIGH);
+  digitalWrite(9, HIGH);
+
+  if (digitalRead(0)== HIGH)  // if pressed
+  {
+    game();
+  }
+
+}
+
+unsigned long time_int(int correct) {
+  unsigned long time_delay = 0;
+
+  if (correct < 20) { time_delay = 1e6; }  // abt 2s 
+  else if (correct < 40) { time_delay = 1e8; } // abt 1.6s 
+  else if (correct < 60) { time_delay = 1e8; } // abt 1.2s 
+  else if (correct < 80) { time_delay = 1e8; } // abt 0.7s 
+  else if (correct < 99) { time_delay = 1e8; } // abt 0.5s 
+
+  return time_delay;
+
+}
+
+bool whisk(int correct) {
+  bool toggle = false;
+  bool reset = false;
+  unsigned long iteration = time_int(correct);
+
+  if (digitalRead(1) == LOW) // should be low
+  {
+    digitalWrite(7, LOW);  // plays whisk it command when low
+    for (unsigned long i = 0; i < iteration; i++)
+    {
+      if (digitalRead(1) == HIGH) // toggled
+      {
+        toggle = true;
+        for (int j = 0; j < 10; j++)
+        { if (digitalRead(1) == LOW)
+            {
+              reset = true;
+            }
+        }
+      }
+    }
+  }
+  else  // if starting high
+  {
+    digitalWrite(7, LOW);  // plays whisk it command
+    for (unsigned long i = 0; i < iteration; i++)
+    {
+      if (digitalRead(1) == LOW) // toggled
+      {
+        toggle = true;
+        for (int j = 0; j < 10; j++)
+        {
+          if (digitalRead(1) == HIGH)
+          {
+            reset = true;
+          }
+        }
+      }
+    }
+  }
+
+  if (toggle == true && reset == true)
+  {
+    digitalWrite(7, HIGH); // stop audio
+    return true;
+  }
+  else 
+  {
+    digitalWrite(7, HIGH); // stop audio
+    return false;
+  }
+}
+
+bool serve(int correct) {
+  bool win = false;
+  digitalWrite(8, LOW);  // play serve it command
+  unsigned long iteration = time_int(correct);
+
+  for (unsigned long i = 0; i < iteration; i++)
+  {
+    if (digitalRead(2) == HIGH)
+    {
+      win = true;
+    }
+  }
+  digitalWrite(8, HIGH); // stop audio
+  return win; 
+}
+
+bool pour(int correct) { 
+  bool win = false;
+  digitalWrite(9, LOW); // play pour it command
+  unsigned long iteration = time_int(correct);
+
+  for (unsigned long i = 0; i < iteration; i++)
+  {
+    if (digitalRead(3) == LOW)  // starts high
+    {
+      win = true;
+    }
+  }
+  digitalWrite(9, HIGH); // stop audio
+  return win; 
+}
+
+void led(int corr)
+{
+  if (corr == 1)  // correct
+  {
+    digitalWrite(5, HIGH);  // turn the LED on (HIGH is the voltage level)
+    delay(1000);                      // wait for a second
+    digitalWrite(5, LOW);   // turn the LED off by making the voltage LOW
+    delay(1000);
+  }
+  else if( corr == 0)  // incorrect and game ends
+  {
+    digitalWrite(6, HIGH);  // turn the LED on (HIGH is the voltage level)
+    delay(1000);                      // wait for a second
+    digitalWrite(6, LOW);   // turn the LED off by making the voltage LOW
+    delay(1000);
+  }
+  else 
+  {
+    digitalWrite(5, LOW);
+    digitalWrite(6, LOW);
+  }
+  
+}
+
+void game() {
+   int correct = 0;
+   bool play = true;
+   int prev_action = -1;
+  int wait = 0;
+  bool cont = false;
+
+  while (play == true && correct < 99)
+   {
+      int randnum = random(0, 3);
+      if (prev_action == 2)
+      {
+        randnum = random(0,2);
+      }
+
+      switch(randnum) 
+      {
+        case 0:
+          prev_action = 0;
+          cont = whisk(correct);
+          
+          if (cont == true)
+          {
+            correct +=1;
+            led(1);
+            uint8_t data[] = {0xff, 0xff, 0xff, 0xff};
+           // display.showNumberDec(correct, false);  // hex display updates
+          }
+          else
+          {
+            play = false;
+          }
+          break;
+
+        case 1:
+          prev_action = 1;
+          cont = serve(correct);
+          
+          if (cont == true)
+          {
+            correct += 1;
+            led(1);
+            uint8_t data[] = {0xff, 0xff, 0xff, 0xff};
+          //  display.showNumberDec(correct, false);  // hex display updates
+          }
+          else
+          {
+            play = false;
+          }
+          break;
+
+        case 2:
+          prev_action = 2;
+          cont = pour(correct);
+          
+          if (cont == true)
+          {
+            correct += 1;
+            led(1);
+            uint8_t data[] = {0xff, 0xff, 0xff, 0xff};
+           // display.showNumberDec(correct, false);  // hex display updates
+          }
+          else
+          {
+            play = false;
+          }
+          break;
+      }
+   }
+
+   if (play == false) // incorrect input
+   {
+      led(0); // light red LED
+      return; // game ends, return to main loop
+   }
+   if (correct == 99) // won game
+   {
+    led(1);
+    return; // game ends, return to main loop
+   }
+}
